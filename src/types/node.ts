@@ -1,8 +1,15 @@
 export interface Node {
   id: string;
-  parentId: string | null;
-  depth: number;
-  content: string;
-  isFolded: boolean;
-  isCompleted: boolean;
+  content: string | null;
+  parentId: string;
+  priority: number;
+  metadata: {
+    type: "text" | "todo";
+  };
+  state: {
+    isCompleted?: boolean;
+    isExpanded?: boolean;
+  };
+  createdAt: number;
+  updatedAt: number;
 }
