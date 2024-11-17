@@ -1,13 +1,13 @@
-import { HydrateClient } from "~/trpc/server"
 import Header from "~/components/header"
-import Note from "~/components/note"
+import { Main } from "~/components/main"
+import { HydrateClient } from "~/trpc/server"
 
 export default async function Home() {
   return (
     <HydrateClient>
       <div className="flex flex-col">
         <Header />
-        <Note />
+        <Main />
       </div>
     </HydrateClient>
   )

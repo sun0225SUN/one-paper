@@ -7,7 +7,7 @@ import { useNoteKeyboardHandlers } from "~/hooks/use-note-keyboard"
 import { useNodeStore } from "~/store/node"
 import { getChildNodes, hasChildNodes } from "~/utils/node-actions"
 
-export default function Note() {
+export function Note() {
   const isClient = useClient()
 
   const { nodes, addNode, deleteNode, updateNode } = useNodeStore()
