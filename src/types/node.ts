@@ -1,15 +1,15 @@
 export interface Node {
-  id: string;
-  content: string | null;
-  parentId: string;
-  priority: number;
+  id: string
+  content: string | null
+  parentId: string
+  priority: number
   metadata: {
-    type: "text" | "todo";
-  };
+    type: "text" | "todo"
+  }
   state: {
-    isCompleted?: boolean;
-    isExpanded?: boolean;
-  };
-  createdAt: number;
-  updatedAt: number;
+    isCompleted?: boolean
+    isExpanded?: boolean
+  }
+  createdAt: number
+  updatedAt: number
 }

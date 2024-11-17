@@ -1,6 +1,7 @@
 {
-  "i18n-ally.localesPaths": [
-    "messages",
-    "src/i18n"
-  ]
+  "i18n-ally.localesPaths": ["messages", "src/i18n"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "always"
+  }
 }

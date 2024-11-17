@@ -1,6 +1,6 @@
-import { HydrateClient } from "~/trpc/server";
-import Header from "~/components/header";
-import Note from "~/components/note";
+import { HydrateClient } from "~/trpc/server"
+import Header from "~/components/header"
+import Note from "~/components/note"
 
 export default async function Home() {
   return (
@@ -10,5 +10,5 @@ export default async function Home() {
         <Note />
       </div>
     </HydrateClient>
-  );
+  )
 }

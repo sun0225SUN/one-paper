@@ -1,29 +1,29 @@
-"use client";
+"use client"
 
-import { Check, Languages } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Check, Languages } from "lucide-react"
+import { useRouter } from "next/navigation"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "~/components/ui/popover";
-import { localeMap, locales } from "~/i18n/routing";
-import { setUserLocale } from "~/server/locale";
-import { useLocale } from "next-intl";
+} from "~/components/ui/popover"
+import { localeMap, locales } from "~/i18n/routing"
+import { setUserLocale } from "~/server/locale"
+import { useLocale } from "next-intl"
 
 export function LanguageToggle() {
-  const router = useRouter();
-  const currentLocale = useLocale();
+  const router = useRouter()
+  const currentLocale = useLocale()
 
   const handleLocaleChange = (locale: string) => {
     setUserLocale(locale)
       .then(() => {
-        router.refresh();
+        router.refresh()
       })
       .catch(() => {
-        console.error("Failed to set user locale");
-      });
-  };
+        console.error("Failed to set user locale")
+      })
+  }
 
   return (
     <Popover>
@@ -48,5 +48,5 @@ export function LanguageToggle() {
         ))}
       </PopoverContent>
     </Popover>
-  );
+  )
 }

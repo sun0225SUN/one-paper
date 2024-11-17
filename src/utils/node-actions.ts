@@ -1,5 +1,5 @@
-import { type Node } from "~/types/node";
-import { nanoid } from "nanoid";
+import { type Node } from "~/types/node"
+import { nanoid } from "nanoid"
 
 /**
  * Get child nodes and sort them by priority
@@ -10,8 +10,8 @@ import { nanoid } from "nanoid";
 export const getChildNodes = (nodes: Node[], parentId: string) => {
   return nodes
     .filter((node) => node.parentId === parentId)
-    .sort((a, b) => a.priority - b.priority);
-};
+    .sort((a, b) => a.priority - b.priority)
+}
 
 /**
  * Check if a node has any children
@@ -20,8 +20,8 @@ export const getChildNodes = (nodes: Node[], parentId: string) => {
  * @returns Boolean indicating whether the node has children
  */
 export const hasChildNodes = (nodes: Node[], nodeId: string) => {
-  return nodes.some((node) => node.parentId === nodeId);
-};
+  return nodes.some((node) => node.parentId === nodeId)
+}
 
 /**
  * Create a new node with default values
@@ -37,4 +37,4 @@ export const createDefaultNode = (parentId: string): Node => ({
   state: { isExpanded: true, isCompleted: false },
   createdAt: Date.now(),
   updatedAt: Date.now(),
-});
+})

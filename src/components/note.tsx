@@ -1,20 +1,20 @@
-"use client";
+"use client"
 
-import { Fragment, useCallback } from "react";
-import { useNodeStore } from "~/store/node";
+import { Fragment, useCallback } from "react"
+import { useNodeStore } from "~/store/node"
 import {
   getChildNodes,
   hasChildNodes,
   createDefaultNode,
-} from "~/utils/node-actions";
+} from "~/utils/node-actions"
 
 export default function Note() {
-  const { nodes, addNode, updateNode } = useNodeStore();
+  const { nodes, addNode, updateNode } = useNodeStore()
 
   const toggleNodeExpansion = useCallback(
     (nodeId: string) => {
-      const node = nodes.find((node) => node.id === nodeId);
-      if (!node) return;
+      const node = nodes.find((node) => node.id === nodeId)
+      if (!node) return
 
       updateNode(nodeId, {
         ...node,
@@ -22,22 +22,22 @@ export default function Note() {
           ...node.state,
           isExpanded: !node.state.isExpanded,
         },
-      });
+      })
     },
     [nodes, updateNode],
-  );
+  )
 
   const handleNodeAdd = useCallback(
     (parentId: string) => {
-      addNode(createDefaultNode(parentId));
+      addNode(createDefaultNode(parentId))
     },
     [addNode],
-  );
+  )
 
   const renderNodes = useCallback(
     (parentId: string) => {
       return getChildNodes(nodes, parentId).map((node) => {
-        const hasChildren = hasChildNodes(nodes, node.id);
+        const hasChildren = hasChildNodes(nodes, node.id)
 
         return (
           <Fragment key={node.id}>
@@ -84,15 +84,15 @@ export default function Note() {
               </div>
             )}
           </Fragment>
-        );
-      });
+        )
+      })
     },
     [nodes, toggleNodeExpansion, handleNodeAdd],
-  );
+  )
 
   return (
     <div className="mx-auto h-full w-full max-w-5xl p-10">
       {renderNodes("root")}
     </div>
-  );
+  )
 }

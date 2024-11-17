@@ -1,9 +1,9 @@
-import { ThemeToggle } from "~/components/theme/toggle";
-import { LanguageToggle } from "~/components/language/toggle";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "next-intl"
+import { LanguageToggle } from "~/components/language/toggle"
+import { ThemeToggle } from "~/components/theme/toggle"
 
 export default function Header() {
-  const t = useTranslations("app");
+  const t = useTranslations("app")
 
   return (
     <div className="mx-auto h-16 w-full max-w-7xl p-4">
@@ -15,5 +15,5 @@ export default function Header() {
         </div>
       </div>
     </div>
-  );
+  )
 }

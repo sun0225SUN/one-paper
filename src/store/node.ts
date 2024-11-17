@@ -1,12 +1,12 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { type Node } from "~/types/node";
-import { nanoid } from "nanoid";
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
+import { type Node } from "~/types/node"
+import { nanoid } from "nanoid"
 
 interface NodeStore {
-  nodes: Node[];
-  addNode: (node: Node) => void;
-  updateNode: (nodeId: string, node: Node) => void;
+  nodes: Node[]
+  addNode: (node: Node) => void
+  updateNode: (nodeId: string, node: Node) => void
 }
 
 export const useNodeStore = create<NodeStore>()(
@@ -39,4 +39,4 @@ export const useNodeStore = create<NodeStore>()(
       name: "nodes-storage",
     },
   ),
-);
+)
