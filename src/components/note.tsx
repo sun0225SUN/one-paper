@@ -43,7 +43,7 @@ export default function Note() {
           <Fragment key={node.id}>
             <div className="group relative flex cursor-text justify-between gap-2 py-1 before:absolute before:-left-6 before:top-0 before:h-full before:w-6 before:content-['']">
               <div className="flex items-center gap-2">
-                <span className="relative size-2 rounded-full bg-black">
+                <span className="relative size-2 rounded-full bg-black dark:bg-white">
                   {hasChildren && (
                     <>
                       <div className="hidden h-8 w-8 items-center justify-center group-hover:flex">

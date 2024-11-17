@@ -36,7 +36,7 @@ export const useNodeStore = create<NodeStore>()(
         }),
     }),
     {
-      name: "node-storage",
+      name: "nodes-storage",
     },
   ),
 );
