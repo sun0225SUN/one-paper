@@ -1,11 +1,12 @@
+import { nanoid } from "nanoid"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { type Node } from "~/types/node"
-import { nanoid } from "nanoid"
 
 interface NodeStore {
   nodes: Node[]
   addNode: (node: Node) => void
+  deleteNode: (nodeId: string) => void
   updateNode: (nodeId: string, node: Node) => void
 }
 
@@ -16,7 +17,7 @@ export const useNodeStore = create<NodeStore>()(
         {
           id: nanoid(),
           priority: 100,
-          content: "Hello, world!",
+          content: "",
           parentId: "root",
           metadata: { type: "text" },
           state: {
@@ -28,6 +29,8 @@ export const useNodeStore = create<NodeStore>()(
         },
       ],
       addNode: (node: Node) => set({ nodes: [...get().nodes, node] }),
+      deleteNode: (nodeId: string) =>
+        set({ nodes: get().nodes.filter((n) => n.id !== nodeId) }),
       updateNode: (nodeId: string, node: Node) =>
         set({
           nodes: get().nodes.map((n) =>

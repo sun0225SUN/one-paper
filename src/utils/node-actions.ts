@@ -1,5 +1,5 @@
-import { type Node } from "~/types/node"
 import { nanoid } from "nanoid"
+import { type Node } from "~/types/node"
 
 /**
  * Get child nodes and sort them by priority
@@ -31,10 +31,48 @@ export const hasChildNodes = (nodes: Node[], nodeId: string) => {
 export const createDefaultNode = (parentId: string): Node => ({
   id: nanoid(),
   parentId,
-  content: "test",
+  content: "",
   priority: 100,
   metadata: { type: "text" },
   state: { isExpanded: true, isCompleted: false },
   createdAt: Date.now(),
   updatedAt: Date.now(),
 })
+
+/**
+ * Get all visible nodes in the tree structure
+ * @param nodes - Array of all nodes in the note
+ * @returns Array of node IDs in display order
+ */
+export const getAllVisibleNodes = (nodes: Node[]): string[] => {
+  const visibleNodes: string[] = []
+  const traverse = (parentId: string) => {
+    const children = getChildNodes(nodes, parentId)
+    children.forEach((node) => {
+      visibleNodes.push(node.id)
+      if (node.state.isExpanded !== false) {
+        traverse(node.id)
+      }
+    })
+  }
+  traverse("root")
+  return visibleNodes
+}
+
+/**
+ * Set cursor to the end of the node
+ * @param nodeId - The ID of the node to set the cursor to
+ */
+export const setCursorToEnd = (nodeId: string) => {
+  setTimeout(() => {
+    const el = document.getElementById(nodeId)
+    if (el) {
+      const range = document.createRange()
+      const selection = window.getSelection()
+      range.selectNodeContents(el)
+      range.collapse(false)
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    }
+  }, 0)
+}
