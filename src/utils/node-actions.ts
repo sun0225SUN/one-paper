@@ -86,7 +86,7 @@ export const getAllVisibleNodes = (nodes: Node[]): string[] => {
  */
 export const setCursorToEnd = (nodeId: string) => {
   setTimeout(() => {
-    const el = document.getElementById(nodeId)
+    const el = document.getElementById(`content-${nodeId}`)
     if (el) {
       const range = document.createRange()
       const selection = window.getSelection()

@@ -11,6 +11,9 @@ const config = {
     "plugin:@typescript-eslint/stylistic-type-checked",
   ],
   rules: {
+    // JavaScript rules
+    "prefer-const": "error",
+    // TypeScript rules
     "@typescript-eslint/array-type": "off",
     "@typescript-eslint/consistent-type-definitions": "off",
     "@typescript-eslint/consistent-type-imports": [
@@ -35,6 +38,8 @@ const config = {
         },
       },
     ],
+    // React rules
+    "react/self-closing-comp": ["error"],
   },
 }
 module.exports = config
