@@ -26,18 +26,39 @@ export const hasChildNodes = (nodes: Node[], nodeId: string) => {
 /**
  * Create a new node with default values
  * @param parentId - ID of the parent node
+ * @param prevNodePriority - Priority of the previous node (optional)
+ * @param nextNodePriority - Priority of the next node (optional)
  * @returns New node object with default properties
  */
-export const createDefaultNode = (parentId: string): Node => ({
-  id: nanoid(),
-  parentId,
-  content: "",
-  priority: 100,
-  metadata: { type: "text" },
-  state: { isExpanded: true, isCompleted: false },
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-})
+export const createDefaultNode = (
+  parentId: string,
+  prevNodePriority?: number,
+  nextNodePriority?: number,
+): Node => {
+  let priority: number
+
+  if (prevNodePriority === undefined) {
+    // If it's the first node
+    priority = nextNodePriority ? nextNodePriority / 2 : 1000000
+  } else if (nextNodePriority === undefined) {
+    // If it's the last node
+    priority = prevNodePriority + 10000
+  } else {
+    // Between two nodes, use binary search method
+    priority = prevNodePriority + (nextNodePriority - prevNodePriority) / 2
+  }
+
+  return {
+    id: nanoid(),
+    parentId,
+    content: "",
+    priority,
+    metadata: { type: "text" },
+    state: { isExpanded: true, isCompleted: false },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+}
 
 /**
  * Get all visible nodes in the tree structure

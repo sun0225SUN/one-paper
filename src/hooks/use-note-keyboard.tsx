@@ -33,8 +33,23 @@ export function useNoteKeyboardHandlers({
    */
   const handleEnterKey = useCallback(
     (currentNode: Node) => {
+      // Get all siblings of the current node
+      const siblings = getChildNodes(nodes, currentNode.parentId)
+      const currentIndex = siblings.findIndex(
+        (node) => node.id === currentNode.id,
+      )
+
+      // Get priorities of adjacent nodes
+      const prevNodePriority = currentNode.priority
+      const nextNode = siblings[currentIndex + 1]
+      const nextNodePriority = nextNode?.priority
+
       const newNode = {
-        ...createDefaultNode(currentNode.parentId),
+        ...createDefaultNode(
+          currentNode.parentId,
+          prevNodePriority,
+          nextNodePriority,
+        ),
         metadata: {
           type: currentNode.metadata.type,
         },
@@ -42,7 +57,7 @@ export function useNoteKeyboardHandlers({
       addNode(newNode)
       setCursorToEnd(newNode.id)
     },
-    [addNode],
+    [addNode, nodes],
   )
 
   /**
@@ -82,9 +97,21 @@ export function useNoteKeyboardHandlers({
         const parentNode = nodes.find((n) => n.id === currentNode.parentId)
         if (!parentNode || parentNode.id === "root") return
 
+        // Get parent's siblings to calculate new priority
+        const parentSiblings = getChildNodes(nodes, parentNode.parentId)
+        const parentIndex = parentSiblings.findIndex(
+          (n) => n.id === parentNode.id,
+        )
+        const nextParentSibling = parentSiblings[parentIndex + 1]
+
         updateNode(nodeId, {
           ...currentNode,
           parentId: parentNode.parentId,
+          priority:
+            parentNode.priority +
+            (nextParentSibling
+              ? (nextParentSibling.priority - parentNode.priority) / 2
+              : 0),
         })
         setCursorToEnd(nodeId)
       } else {
@@ -92,9 +119,17 @@ export function useNoteKeyboardHandlers({
         const newParent = siblings[currentIndex - 1]
         if (!newParent) return
 
+        // Check if new parent has children
+        const newParentChildren = getChildNodes(nodes, newParent.id)
+        const newPriority =
+          newParentChildren.length > 0
+            ? newParentChildren[newParentChildren.length - 1]!.priority + 10000
+            : newParent?.priority
+
         updateNode(nodeId, {
           ...currentNode,
           parentId: newParent.id,
+          priority: newPriority,
         })
         setCursorToEnd(nodeId)
       }

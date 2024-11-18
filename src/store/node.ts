@@ -16,8 +16,9 @@ export const useNodeStore = create<NodeStore>()(
       nodes: [
         {
           id: nanoid(),
-          priority: 100,
-          content: "",
+          //  make a million 💰
+          priority: 1000000,
+          content: "Hello world!",
           parentId: "root",
           metadata: { type: "text" },
           state: {

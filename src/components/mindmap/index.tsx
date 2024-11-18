@@ -99,11 +99,11 @@ export function Mindmap() {
           ref={svgRef}
           style={{ width: "100%", height: "calc(100% - 72px)" }}
         />
-        <div className="one-paper absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
+        <div className="one-paper absolute bottom-6 left-1/2 z-10 hidden -translate-x-1/2 md:block">
           - Created By OnePaper -
         </div>
         <button
-          className="download absolute bottom-6 left-60 z-10"
+          className="download absolute bottom-6 left-5 z-10 md:left-60"
           onClick={handleDownload}
           disabled={downloading}
         >

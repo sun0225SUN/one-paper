@@ -18,6 +18,12 @@
   border: 1px solid rgba(211, 211, 211, 1);
 }
 
+@media (max-width: 768px) {
+  .mm-toolbar {
+    right: 40px;
+  }
+}
+
 /* Dark theme overrides */
 .dark .mm-toolbar {
   background: black;
