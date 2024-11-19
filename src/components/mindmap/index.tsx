@@ -11,7 +11,7 @@ import "~/styles/mindmap.css"
 import { transformToMarkdown } from "~/utils/data-convert"
 import { downloadElementAsPng } from "~/utils/download-image"
 
-export function Mindmap() {
+export function MindMap() {
   const { nodes } = useNodeStore()
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)

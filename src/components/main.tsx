@@ -1,10 +1,10 @@
 "use client"
 
+import { MindMap } from "~/components/mindmap"
+import { Note } from "~/components/note"
 import { useModeStore } from "~/store/mode"
-import { Mindmap } from "./mindmap"
-import { Note } from "./note"
 
 export function Main() {
   const mode = useModeStore((state) => state.mode)
-  return <>{mode === "note" ? <Note /> : <Mindmap />}</>
+  return <>{mode === "note" ? <Note /> : <MindMap />}</>
 }

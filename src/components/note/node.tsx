@@ -35,25 +35,34 @@ export function Node({
     <div
       className={clsx(
         "node-wrapper group relative rounded-sm pl-1 outline-blue-500",
-        isPartOfDraggedNode(node.id) &&
-          "cursor-grabbing select-none !bg-[rgba(243,244,246,0.8)] !text-[rgba(0,0,0,0.5)] dark:!bg-[rgba(26,26,26,0.8)] dark:!text-[rgba(255,255,255,0.5)]",
-        dropTarget?.nodeId === node.id && [
-          dropTarget.type === "inside" &&
-            "relative z-10 bg-blue-50 outline outline-2 outline-blue-500 dark:bg-blue-900/20",
-          dropTarget.type === "between" && [
+
+        // Dragged node state
+        {
+          "cursor-grabbing select-none !bg-[rgba(243,244,246,0.8)] !text-[rgba(0,0,0,0.5)] dark:!bg-[rgba(26,26,26,0.8)] dark:!text-[rgba(255,255,255,0.5)]":
+            isPartOfDraggedNode(node.id),
+        },
+
+        // Drop target states
+        dropTarget?.nodeId === node.id && {
+          // Inside drop target
+          "relative z-10 bg-blue-50 outline outline-2 outline-blue-500 dark:bg-blue-900/20":
+            dropTarget.type === "inside",
+
+          // Between drop target
+          "before:pointer-events-none before:absolute before:-top-[1px] before:left-0 before:z-20 before:h-[2px] before:w-full before:bg-blue-500 after:pointer-events-none after:absolute after:-left-[3px] after:-top-[3px] after:z-20 after:size-[6px] after:rounded-full after:bg-blue-500":
+            dropTarget.type === "between" &&
             dropTarget.index ===
               getChildNodes(nodes, node.parentId ?? "root").findIndex(
                 (n) => n.id === node.id,
-              ) &&
-              "before:pointer-events-none before:absolute before:-top-[1px] before:left-0 before:z-20 before:h-[2px] before:w-full before:bg-blue-500 after:pointer-events-none after:absolute after:-left-[3px] after:-top-[3px] after:z-20 after:size-[6px] after:rounded-full after:bg-blue-500",
+              ),
+          "before:pointer-events-none before:absolute before:-bottom-[1px] before:left-0 before:z-20 before:h-[2px] before:w-full before:bg-blue-500 after:pointer-events-none after:absolute after:-bottom-[3px] after:-left-[3px] after:z-20 after:size-[6px] after:rounded-full after:bg-blue-500":
+            dropTarget.type === "between" &&
             dropTarget.index ===
               getChildNodes(nodes, node.parentId ?? "root").findIndex(
                 (n) => n.id === node.id,
               ) +
-                1 &&
-              "before:pointer-events-none before:absolute before:-bottom-[1px] before:left-0 before:z-20 before:h-[2px] before:w-full before:bg-blue-500 after:pointer-events-none after:absolute after:-bottom-[3px] after:-left-[3px] after:z-20 after:size-[6px] after:rounded-full after:bg-blue-500",
-          ],
-        ],
+                1,
+        },
       )}
     >
       {/* current node */}

@@ -16,17 +16,13 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 }
 
-type Params = Promise<{ locale: string }>
-
-export default async function LocaleLayout({
+export default async function RootLayout({
+  params: { locale },
   children,
-  params,
-}: {
+}: Readonly<{
   children: React.ReactNode
-  params: Params
-}) {
-  const { locale } = await params
-
+  params: { locale: string }
+}>) {
   // Ensure that the incoming `locale` is valid
   // eslint-disable-next-line
   if (!routing.locales.includes(locale as any)) {
