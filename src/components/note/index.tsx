@@ -4,6 +4,7 @@ import {
   draggable,
   dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
+import type { DragLocationHistory } from "@atlaskit/pragmatic-drag-and-drop/types"
 import clsx from "clsx"
 import { Fragment, useCallback, useEffect, useState } from "react"
 import Triangle from "~/assets/images/svg/triangle.svg"
@@ -17,11 +18,84 @@ import {
   setCursorToEnd,
 } from "~/utils/node-actions"
 
+// Types
+interface DragPreviewState {
+  element: HTMLDivElement | null
+  updatePosition: (location: DragLocationHistory["current"]) => void
+  show: (nodeCount: number, location: DragLocationHistory["current"]) => void
+  hide: () => void
+}
+
+interface EmptyImageState {
+  element: HTMLImageElement | null
+}
+
 export function Note() {
   const isClient = useClient()
   const [draggingId, setDraggingId] = useState<string | null>(null)
 
+  // Initialize drag preview with all its methods
+  const [dragPreview, setDragPreview] = useState<DragPreviewState>(() => ({
+    element: null,
+    updatePosition: () => undefined,
+    show: () => undefined,
+    hide: () => undefined,
+  }))
+
+  // Initialize empty image for drag ghost
+  const [emptyImage] = useState<EmptyImageState>(() => {
+    if (typeof window === "undefined") return { element: null }
+    const img = new window.Image()
+    img.src =
+      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+    return { element: img }
+  })
+
+  // Initialize drag preview element and its methods
+  useEffect(() => {
+    const element = document.createElement("div")
+    element.className =
+      "fixed pointer-events-none z-50 hidden rounded-md bg-white/90 px-3 text-sm font-medium shadow-lg backdrop-blur-sm dark:bg-black/90"
+    element.style.willChange = "transform"
+    document.body.appendChild(element)
+
+    const preview: DragPreviewState = {
+      element,
+      updatePosition: (location) => {
+        const { clientX, clientY } = location.input
+        requestAnimationFrame(() => {
+          if (!element) return
+          element.style.transform = `translate3d(${clientX + 8}px, ${clientY + 8}px, 0)`
+          element.style.left = "0"
+          element.style.top = "0"
+        })
+      },
+      show: (nodeCount, location) => {
+        if (!element) return
+        element.textContent = `${nodeCount} ${nodeCount === 1 ? "item" : "items"}`
+        preview.updatePosition(location)
+        element.style.display = "block"
+      },
+      hide: () => {
+        if (!element) return
+        element.style.display = "none"
+      },
+    }
+
+    setDragPreview(preview)
+    return () => element.remove()
+  }, [])
+
   const { nodes, addNode, deleteNode, updateNode } = useNodeStore()
+
+  // Count nodes including children (memoized)
+  const countNodes = useCallback(
+    (parentId: string): number => {
+      const children = getChildNodes(nodes, parentId)
+      return 1 + children.reduce((sum, child) => sum + countNodes(child.id), 0)
+    },
+    [nodes],
+  )
 
   const { toggleNodeExpansion, handleNodeContentChange } = useNodeOperations({
     nodes,
@@ -35,21 +109,46 @@ export function Note() {
     updateNode,
   })
 
-  const setDragHandle = useCallback((handle: HTMLSpanElement | null) => {
-    if (!handle?.closest(".node-wrapper")) return
+  // Setup drag handlers
+  const setDragHandle = useCallback(
+    (handle: HTMLSpanElement | null) => {
+      if (!handle?.closest(".node-wrapper")) return
 
-    return draggable({
-      element: handle.closest(".node-wrapper")!,
-      dragHandle: handle,
-      onDragStart: () => setDraggingId(handle.id ?? null),
-      onDrop: () => setDraggingId(null),
-    })
+      return draggable({
+        element: handle.closest(".node-wrapper")!,
+        dragHandle: handle,
+        onGenerateDragPreview: ({ nativeSetDragImage }) => {
+          if (!nativeSetDragImage || !emptyImage.element) return
+          nativeSetDragImage(emptyImage.element, 0, 0)
+        },
+        onDragStart: (event) => {
+          const nodeId = handle.id?.replace("drag-handle-", "")
+          if (!nodeId) return
+
+          setDraggingId(handle.id ?? null)
+          const nodeCount = countNodes(nodeId)
+          dragPreview.show(nodeCount, event.location.current)
+        },
+        onDrag: (event) => {
+          dragPreview.updatePosition(event.location.current)
+        },
+        onDrop: () => {
+          dragPreview.hide()
+          setDraggingId(null)
+        },
+      })
+    },
+    [emptyImage.element, countNodes, dragPreview],
+  )
+
+  // Initialize drop target
+  useEffect(() => {
+    dropTargetForElements({ element: document.body })
   }, [])
 
-  useEffect(() => dropTargetForElements({ element: document.body }), [])
-
+  // Check if a node is part of the currently dragged tree (memoized)
   const isPartOfDraggedNode = useCallback(
-    (nodeId: string) => {
+    (nodeId: string): boolean => {
       if (!draggingId) return false
       const draggedNode = nodes.find(
         (node) => `drag-handle-${node.id}` === draggingId,
@@ -74,13 +173,15 @@ export function Note() {
 
         return (
           <Fragment key={node.id}>
+            {/* node wrapper */}
             <div
               className={clsx(
-                "node-wrapper rounded-sm bg-white pl-6 dark:bg-black",
+                "node-wrapper rounded-sm pl-1 transition-all duration-200",
                 isPartOfDraggedNode(node.id) &&
-                  "bg-gray-100 text-gray-500 dark:bg-[#1a1a1a] dark:text-gray-400",
+                  "cursor-grabbing select-none !bg-[rgba(243,244,246,0.8)] !text-[rgba(0,0,0,0.5)] dark:!bg-[rgba(26,26,26,0.8)] dark:!text-[rgba(255,255,255,0.5)]",
               )}
             >
+              {/* current node */}
               <div
                 onClick={() => {
                   const element = document.getElementById(node.id)
@@ -93,6 +194,7 @@ export function Note() {
                   "before:absolute before:-left-6 before:top-0 before:h-full before:w-6 before:cursor-pointer before:content-['']",
                 )}
               >
+                {/*  expand triangle */}
                 {hasChildren && (
                   <button
                     onClick={() => toggleNodeExpansion(node.id)}
@@ -107,6 +209,7 @@ export function Note() {
                   </button>
                 )}
 
+                {/* drag circle */}
                 <span
                   ref={setDragHandle}
                   id={`drag-handle-${node.id}`}
@@ -125,6 +228,7 @@ export function Note() {
                   <span className="absolute left-[6px] top-[6px] size-2 rounded-full bg-black dark:bg-white" />
                 </span>
 
+                {/* node content */}
                 <span
                   id={`content-${node.id}`}
                   ref={(el) => {
@@ -138,8 +242,9 @@ export function Note() {
                 />
               </div>
 
+              {/* child nodes */}
               {node.state.isExpanded !== false && (
-                <div className="ml-[9px] border-l-2 border-gray-300">
+                <div className="ml-[9px] border-l-2 border-gray-300 pl-6">
                   {renderNodes(node.id)}
                 </div>
               )}
