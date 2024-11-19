@@ -30,9 +30,18 @@ interface EmptyImageState {
   element: HTMLImageElement | null
 }
 
+type DropTarget = {
+  type: "between" | "inside"
+  nodeId: string
+  index?: number
+}
+
 export function Note() {
+  const GAP_THRESHOLD = 10
+
   const isClient = useClient()
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
 
   // Initialize drag preview with all its methods
   const [dragPreview, setDragPreview] = useState<DragPreviewState>(() => ({
@@ -109,13 +118,268 @@ export function Note() {
     updateNode,
   })
 
+  // Check if target node is a descendant of source node
+  const isDescendant = useCallback(
+    (sourceId: string, targetId: string): boolean => {
+      const isChild = (parentId: string): boolean => {
+        if (targetId === parentId) return true
+        const children = getChildNodes(nodes, parentId)
+        return children.some((child) => isChild(child.id))
+      }
+      return isChild(sourceId)
+    },
+    [nodes],
+  )
+
+  // Handle node drop (memoized)
+  const handleNodeDrop = useCallback(
+    (sourceId: string, dropTarget: DropTarget) => {
+      const sourceNode = nodes.find((node) => node.id === sourceId)
+      if (!sourceNode || !dropTarget) return
+
+      // Get target node
+      const targetNode = nodes.find((node) => node.id === dropTarget.nodeId)
+      if (!targetNode) return
+
+      // Prevent dropping onto itself or its children
+      if (isDescendant(sourceId, dropTarget.nodeId)) {
+        return
+      }
+
+      // Update source node's parentId and priority
+      if (dropTarget.type === "inside") {
+        // Place inside target node
+        const targetChildren = getChildNodes(nodes, dropTarget.nodeId)
+        const newPriority =
+          targetChildren.length > 0
+            ? targetChildren[targetChildren.length - 1]!.priority + 10000
+            : 1000000
+
+        useNodeStore.getState().updateNode(sourceId, {
+          ...sourceNode,
+          parentId: dropTarget.nodeId,
+          priority: newPriority,
+        })
+      } else {
+        // Place between nodes
+        const targetParentId = targetNode.parentId ?? "root"
+        const siblings = getChildNodes(nodes, targetParentId)
+        const targetIndex = dropTarget.index ?? siblings.length
+
+        let newPriority: number
+
+        if (targetIndex === 0) {
+          // Place at first position
+          newPriority = siblings[0] ? siblings[0].priority / 2 : 1000000
+        } else if (targetIndex >= siblings.length) {
+          // Place at last position
+          newPriority = siblings[siblings.length - 1]!.priority + 10000
+        } else {
+          // Place between two nodes
+          const prevNode = siblings[targetIndex - 1]!
+          const nextNode = siblings[targetIndex]!
+          newPriority =
+            prevNode.priority + (nextNode.priority - prevNode.priority) / 2
+        }
+
+        useNodeStore.getState().updateNode(sourceId, {
+          ...sourceNode,
+          parentId: targetParentId,
+          priority: newPriority,
+        })
+      }
+    },
+    [nodes, isDescendant],
+  )
+
   // Setup drag handlers
   const setDragHandle = useCallback(
     (handle: HTMLSpanElement | null) => {
       if (!handle?.closest(".node-wrapper")) return
 
-      return draggable({
-        element: handle.closest(".node-wrapper")!,
+      const nodeWrapper = handle.closest(".node-wrapper")!
+
+      // Make the node wrapper a drop target
+      const dropTargetCleanup = dropTargetForElements({
+        element: nodeWrapper,
+        onDrag: ({ location }) => {
+          // Check if there are inner target nodes
+          const { clientX, clientY } = location.current.input
+          const elementsAtPoint = document.elementsFromPoint(clientX, clientY)
+          const nodeWrappers = elementsAtPoint.filter((el) =>
+            el.classList.contains("node-wrapper"),
+          )
+
+          // If current node is not the innermost node, don't process
+          if (nodeWrappers[0] !== nodeWrapper) {
+            return
+          }
+
+          const nodeId = nodeWrapper
+            .querySelector('[id^="content-"]')
+            ?.id?.replace("content-", "")
+          if (!nodeId || nodeId === draggingId?.replace("drag-handle-", ""))
+            return
+
+          const sourceId = draggingId?.replace("drag-handle-", "")
+          if (!sourceId) return
+
+          // Get relative position
+          const mouseY = location.current.input.clientY
+          const rect = nodeWrapper.getBoundingClientRect()
+          const GAP_THRESHOLD = 2 // 2px gap threshold
+
+          // Prevent dropping onto itself or its children
+          if (sourceId === nodeId || isDescendant(sourceId, nodeId)) {
+            return
+          }
+
+          // Get current node's parent node
+          const currentNode = nodes.find((n) => n.id === nodeId)
+          if (!currentNode) return
+
+          // Get all sibling nodes
+          const siblings = getChildNodes(nodes, currentNode.parentId ?? "root")
+          const currentIndex = siblings.findIndex((n) => n.id === nodeId)
+
+          // Check if in the top gap of the node
+          const isInTopGap =
+            mouseY >= rect.top - GAP_THRESHOLD &&
+            mouseY <= rect.top + GAP_THRESHOLD
+          // Check if in the bottom gap of the node
+          const isInBottomGap =
+            mouseY >= rect.bottom - GAP_THRESHOLD &&
+            mouseY <= rect.bottom + GAP_THRESHOLD
+
+          if (isInTopGap) {
+            // In the top gap, insert before the node
+            setDropTarget({
+              type: "between",
+              nodeId: currentNode.id,
+              index: currentIndex,
+            })
+          } else if (isInBottomGap) {
+            // In the bottom gap, insert after the node
+            setDropTarget({
+              type: "between",
+              nodeId: currentNode.id,
+              index: currentIndex + 1,
+            })
+          } else if (
+            mouseY > rect.top + GAP_THRESHOLD &&
+            mouseY < rect.bottom - GAP_THRESHOLD
+          ) {
+            // Inside the node
+            // Remove the check for the parent node, allowing dragging to any node inside
+            setDropTarget({
+              type: "inside",
+              nodeId: currentNode.id,
+            })
+          }
+        },
+        onDragEnter: ({ location }) => {
+          // Check if there are inner target nodes
+          const { clientX, clientY } = location.current.input
+          const elementsAtPoint = document.elementsFromPoint(clientX, clientY)
+          const nodeWrappers = elementsAtPoint.filter((el) =>
+            el.classList.contains("node-wrapper"),
+          )
+
+          // If current node is not the innermost node, don't process
+          if (nodeWrappers[0] !== nodeWrapper) {
+            return
+          }
+
+          const nodeId = nodeWrapper
+            .querySelector('[id^="content-"]')
+            ?.id?.replace("content-", "")
+          if (!nodeId || nodeId === draggingId?.replace("drag-handle-", ""))
+            return
+
+          const sourceId = draggingId?.replace("drag-handle-", "")
+          if (!sourceId) return
+
+          // Get relative position
+          const mouseY = location.current.input.clientY
+          const rect = nodeWrapper.getBoundingClientRect()
+          const GAP_THRESHOLD = 2 // 2px gap threshold
+
+          // Prevent dropping onto itself or its children
+          if (sourceId === nodeId || isDescendant(sourceId, nodeId)) {
+            return
+          }
+
+          // Get current node's parent node
+          const currentNode = nodes.find((n) => n.id === nodeId)
+          if (!currentNode) return
+
+          // Get all sibling nodes
+          const siblings = getChildNodes(nodes, currentNode.parentId ?? "root")
+          const currentIndex = siblings.findIndex((n) => n.id === nodeId)
+
+          // Check if in the top gap of the node
+          const isInTopGap =
+            mouseY >= rect.top - GAP_THRESHOLD &&
+            mouseY <= rect.top + GAP_THRESHOLD
+          // Check if in the bottom gap of the node
+          const isInBottomGap =
+            mouseY >= rect.bottom - GAP_THRESHOLD &&
+            mouseY <= rect.bottom + GAP_THRESHOLD
+
+          if (isInTopGap) {
+            // In the top gap, insert before the node
+            setDropTarget({
+              type: "between",
+              nodeId: currentNode.id,
+              index: currentIndex,
+            })
+          } else if (isInBottomGap) {
+            // In the bottom gap, insert after the node
+            setDropTarget({
+              type: "between",
+              nodeId: currentNode.id,
+              index: currentIndex + 1,
+            })
+          } else if (
+            mouseY > rect.top + GAP_THRESHOLD &&
+            mouseY < rect.bottom - GAP_THRESHOLD
+          ) {
+            // Inside the node
+            // Remove the check for the parent node, allowing dragging to any node inside
+            setDropTarget({
+              type: "inside",
+              nodeId: currentNode.id,
+            })
+          }
+        },
+        onDragLeave: (event) => {
+          // Only clear if we're actually leaving the container area
+          const container = document.querySelector(".note-container")
+          const rect = container?.getBoundingClientRect()
+          if (!rect) return
+
+          const { clientX, clientY } = event.location.current.input
+          if (
+            clientX < rect.left - 10 ||
+            clientX > rect.right + 10 ||
+            clientY < rect.top - 10 ||
+            clientY > rect.bottom + 10
+          ) {
+            setDropTarget(null)
+          }
+        },
+        onDrop: () => {
+          if (draggingId && dropTarget) {
+            const sourceId = draggingId.replace("drag-handle-", "")
+            handleNodeDrop(sourceId, dropTarget)
+          }
+          setDropTarget(null)
+          setDraggingId(null)
+        },
+      })
+
+      const dragCleanup = draggable({
+        element: nodeWrapper as HTMLElement,
         dragHandle: handle,
         onGenerateDragPreview: ({ nativeSetDragImage }) => {
           if (!nativeSetDragImage || !emptyImage.element) return
@@ -134,36 +398,219 @@ export function Note() {
         },
         onDrop: () => {
           dragPreview.hide()
-          setDraggingId(null)
+          // Don't clear draggingId here as we need it for the drop handler
         },
       })
+
+      return () => {
+        dropTargetCleanup()
+        dragCleanup()
+      }
     },
-    [emptyImage.element, countNodes, dragPreview],
+    [
+      emptyImage.element,
+      countNodes,
+      dragPreview,
+      draggingId,
+      isDescendant,
+      nodes,
+      dropTarget,
+      handleNodeDrop,
+    ],
   )
 
-  // Initialize drop target
+  // Make root container a drop target for root-level drops
   useEffect(() => {
-    dropTargetForElements({ element: document.body })
-  }, [])
+    const container = document.querySelector(".note-container")
+    if (!container) return
+
+    return dropTargetForElements({
+      element: container,
+      onDrag: ({ location }) => {
+        if (!draggingId) return
+        const rootNodes = getChildNodes(nodes, "root")
+
+        // Get mouse position
+        const mouseY = location.current.input.clientY
+        const containerRect = container.getBoundingClientRect()
+
+        // If mouse is above container, return
+        if (mouseY < containerRect.top) return
+
+        // Find the closest root node to the mouse
+        let foundDropTarget = false
+        for (let i = 0; i < rootNodes.length; i++) {
+          const element = document
+            .querySelector(`[id="content-${rootNodes[i]!.id}"]`)
+            ?.closest(".node-wrapper")
+          if (!element) continue
+
+          const rect = element.getBoundingClientRect()
+
+          // Skip if mouse is above this node
+          if (mouseY < rect.top - GAP_THRESHOLD) continue
+
+          // If mouse is in top gap
+          if (mouseY <= rect.top + GAP_THRESHOLD) {
+            setDropTarget({
+              type: "between",
+              nodeId: rootNodes[i]!.id,
+              index: i,
+            })
+            foundDropTarget = true
+            break
+          }
+
+          // If mouse is in bottom gap
+          if (
+            mouseY >= rect.bottom - GAP_THRESHOLD &&
+            mouseY <= rect.bottom + GAP_THRESHOLD
+          ) {
+            setDropTarget({
+              type: "between",
+              nodeId: rootNodes[i]!.id,
+              index: i + 1,
+            })
+            foundDropTarget = true
+            break
+          }
+
+          // Skip if we haven't passed this node's bottom yet
+          if (mouseY < rect.bottom) continue
+        }
+
+        // Only set bottom target if mouse is below all nodes and we haven't found another target
+        if (!foundDropTarget && mouseY >= containerRect.top) {
+          const lastNode = rootNodes[rootNodes.length - 1]
+          if (lastNode) {
+            const lastElement = document
+              .querySelector(`[id="content-${lastNode.id}"]`)
+              ?.closest(".node-wrapper")
+
+            if (
+              lastElement &&
+              mouseY >
+                lastElement.getBoundingClientRect().bottom + GAP_THRESHOLD
+            ) {
+              setDropTarget({
+                type: "between",
+                nodeId: lastNode.id,
+                index: rootNodes.length,
+              })
+            }
+          }
+        }
+      },
+      onDragEnter: ({ location }) => {
+        if (!draggingId) return
+        const rootNodes = getChildNodes(nodes, "root")
+
+        // Get mouse position
+        const mouseY = location.current.input.clientY
+        const containerRect = container.getBoundingClientRect()
+
+        // If mouse is above container, return
+        if (mouseY < containerRect.top) return
+
+        // Find the closest root node to the mouse
+        let foundDropTarget = false
+        for (let i = 0; i < rootNodes.length; i++) {
+          const element = document
+            .querySelector(`[id="content-${rootNodes[i]!.id}"]`)
+            ?.closest(".node-wrapper")
+          if (!element) continue
+
+          const rect = element.getBoundingClientRect()
+          const GAP_THRESHOLD = 2
+
+          // Skip if mouse is above this node
+          if (mouseY < rect.top - GAP_THRESHOLD) continue
+
+          // If mouse is in top gap
+          if (mouseY <= rect.top + GAP_THRESHOLD) {
+            setDropTarget({
+              type: "between",
+              nodeId: rootNodes[i]!.id,
+              index: i,
+            })
+            foundDropTarget = true
+            break
+          }
+
+          // If mouse is in bottom gap
+          if (
+            mouseY >= rect.bottom - GAP_THRESHOLD &&
+            mouseY <= rect.bottom + GAP_THRESHOLD
+          ) {
+            setDropTarget({
+              type: "between",
+              nodeId: rootNodes[i]!.id,
+              index: i + 1,
+            })
+            foundDropTarget = true
+            break
+          }
+
+          // Skip if we haven't passed this node's bottom yet
+          if (mouseY < rect.bottom) continue
+        }
+
+        // Only set bottom target if mouse is below all nodes and we haven't found another target
+        if (!foundDropTarget && mouseY >= containerRect.top) {
+          const lastNode = rootNodes[rootNodes.length - 1]
+          if (lastNode) {
+            const lastElement = document
+              .querySelector(`[id="content-${lastNode.id}"]`)
+              ?.closest(".node-wrapper")
+
+            if (
+              lastElement &&
+              mouseY >
+                lastElement.getBoundingClientRect().bottom + GAP_THRESHOLD
+            ) {
+              setDropTarget({
+                type: "between",
+                nodeId: lastNode.id,
+                index: rootNodes.length,
+              })
+            }
+          }
+        }
+      },
+      onDragLeave: (event) => {
+        // Only clear if we're actually leaving the container area
+        const container = document.querySelector(".note-container")
+        const rect = container?.getBoundingClientRect()
+        if (!rect) return
+
+        const { clientX, clientY } = event.location.current.input
+        if (
+          clientX < rect.left - 10 ||
+          clientX > rect.right + 10 ||
+          clientY < rect.top - 10 ||
+          clientY > rect.bottom + 10
+        ) {
+          setDropTarget(null)
+        }
+      },
+      onDrop: () => {
+        if (draggingId && dropTarget) {
+          const sourceId = draggingId.replace("drag-handle-", "")
+          handleNodeDrop(sourceId, dropTarget)
+        }
+        setDropTarget(null)
+        setDraggingId(null)
+      },
+    })
+  }, [draggingId, nodes, dropTarget, handleNodeDrop])
 
   // Check if a node is part of the currently dragged tree (memoized)
   const isPartOfDraggedNode = useCallback(
     (nodeId: string): boolean => {
       if (!draggingId) return false
-      const draggedNode = nodes.find(
-        (node) => `drag-handle-${node.id}` === draggingId,
-      )
-      if (!draggedNode) return false
-
-      const isChild = (parentId: string): boolean => {
-        if (nodeId === parentId) return true
-        const children = getChildNodes(nodes, parentId)
-        return children.some((child) => isChild(child.id))
-      }
-
-      return isChild(draggedNode.id)
+      return `drag-handle-${nodeId}` === draggingId
     },
-    [draggingId, nodes],
+    [draggingId],
   )
 
   const renderNodes = useCallback(
@@ -176,9 +623,26 @@ export function Note() {
             {/* node wrapper */}
             <div
               className={clsx(
-                "node-wrapper rounded-sm pl-1 transition-all duration-200",
+                "node-wrapper group relative rounded-sm pl-1 outline-blue-500",
                 isPartOfDraggedNode(node.id) &&
                   "cursor-grabbing select-none !bg-[rgba(243,244,246,0.8)] !text-[rgba(0,0,0,0.5)] dark:!bg-[rgba(26,26,26,0.8)] dark:!text-[rgba(255,255,255,0.5)]",
+                dropTarget?.nodeId === node.id && [
+                  dropTarget.type === "inside" &&
+                    "relative z-10 bg-blue-50 outline outline-2 outline-blue-500 dark:bg-blue-900/20",
+                  dropTarget.type === "between" && [
+                    dropTarget.index ===
+                      getChildNodes(nodes, node.parentId ?? "root").findIndex(
+                        (n) => n.id === node.id,
+                      ) &&
+                      "before:pointer-events-none before:absolute before:-top-[1px] before:left-0 before:z-20 before:h-[2px] before:w-full before:bg-blue-500 after:pointer-events-none after:absolute after:-left-[3px] after:-top-[3px] after:z-20 after:size-[6px] after:rounded-full after:bg-blue-500",
+                    dropTarget.index ===
+                      getChildNodes(nodes, node.parentId ?? "root").findIndex(
+                        (n) => n.id === node.id,
+                      ) +
+                        1 &&
+                      "before:pointer-events-none before:absolute before:-bottom-[1px] before:left-0 before:z-20 before:h-[2px] before:w-full before:bg-blue-500 after:pointer-events-none after:absolute after:-bottom-[3px] after:-left-[3px] after:z-20 after:size-[6px] after:rounded-full after:bg-blue-500",
+                  ],
+                ],
               )}
             >
               {/* current node */}
@@ -190,7 +654,8 @@ export function Note() {
                   }
                 }}
                 className={clsx(
-                  "group/outer relative flex cursor-text items-center py-1",
+                  "group/outer",
+                  "relative flex cursor-text items-center py-1",
                   "before:absolute before:-left-6 before:top-0 before:h-full before:w-6 before:cursor-pointer before:content-['']",
                 )}
               >
@@ -260,6 +725,7 @@ export function Note() {
       handleKeyDown,
       setDragHandle,
       isPartOfDraggedNode,
+      dropTarget,
     ],
   )
 
@@ -268,7 +734,7 @@ export function Note() {
   }
 
   return (
-    <div className="mx-auto h-full w-full max-w-5xl p-10">
+    <div className="note-container mx-auto h-full w-full max-w-5xl p-10">
       {renderNodes("root")}
     </div>
   )
