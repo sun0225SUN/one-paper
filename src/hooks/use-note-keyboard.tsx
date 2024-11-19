@@ -5,7 +5,7 @@ import {
   getAllVisibleNodes,
   getChildNodes,
   setCursorToEnd,
-} from "~/utils/node-actions"
+} from "~/utils/node-operations"
 
 /**
  * Props interface for the useNoteKeyboardHandlers hook

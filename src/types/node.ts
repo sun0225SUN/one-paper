@@ -13,3 +13,9 @@ export interface Node {
   createdAt: number
   updatedAt: number
 }
+
+export type DropTarget = {
+  type: "between" | "inside"
+  nodeId: string
+  index?: number
+}
